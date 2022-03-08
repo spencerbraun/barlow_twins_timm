@@ -1,0 +1,58 @@
+
+# model
+model: "resnet50"
+pretrained: True
+proj_layers: 2
+proj_dim: 8192
+lambda_: 0.0051
+
+
+# train
+seed: 0
+debug: False
+silent: False
+device: cpu
+workers: 4
+
+max_epochs: 100
+log_interval: 100
+val_interval: 5000
+model_save_pt: 5000
+
+lr_weights: 1e-5
+lr_biases: 1e-5
+weight_decay: 1e-6
+batch_size: 32
+val_steps: 500
+grad_clip: 100.
+early_stop_patience: 20000
+early_stop_key: "loss/total_edit_val"
+dropout: 0.0
+results_dir: null
+
+eval_only: False
+half: False
+save: False
+print_freq: 100
+
+wandb_entity: null
+wandb_project: null
+run_name: "${model}"
+
+# locations
+checkpoint_dir: ./
+
+data:
+  path: "cifar10"
+
+eval:
+  verbose: True
+  log_interval: 100
+  final_eval: True
+
+hydra:
+  run:
+    dir: ./outputs/${now:%Y-%m-%d_%H-%M-%S_%f}
+  sweep:
+    dir: ./outputs/${now:%Y-%m-%d_%H-%M-%S_%f}
+    subdir: ${hydra.job.num}
