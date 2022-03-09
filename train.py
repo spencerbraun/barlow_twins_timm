@@ -15,9 +15,9 @@ from hydra.utils import get_original_cwd
 from omegaconf import DictConfig
 from omegaconf.omegaconf import OmegaConf
 
-from data import Transform
+from data import get_transforms
 from model import BarlowTwins
-from optim import LARS
+from optim import get_optimizer
 
 
 logger = logging.getLogger(__name__)
@@ -27,17 +27,11 @@ logger.addHandler(logging.StreamHandler(sys.stdout))
 
 def train(config, model, loader):
 
-    param_biases = [p for p in model.parameters() if p.ndim == 1]
-    param_weights = [p for p in model.parameters() if p.ndim != 1]
+    if config.wandb_entity:
+        wandb.watch(model, log_freq=100)
 
-    parameters = [{"params": param_weights}, {"params": param_biases}]
-    optimizer = LARS(
-        parameters,
-        lr=0,
-        weight_decay=config.weight_decay,
-        weight_decay_filter=True,
-        lars_adaptation_filter=True,
-    )
+    model.train()
+    optimizer = get_optimizer(config, model)
 
     # automatically resume from checkpoint if it exists
     if os.path.exists(f"{config.checkpoint_dir}/checkpoint.pth"):
@@ -67,6 +61,11 @@ def train(config, model, loader):
             scaler.step(optimizer)
             scaler.update()
 
+            if config.wandb_entity:
+                wandb.log(
+                    {"loss": loss.item(), "lr": optimizer.param_groups[0]["lr"]},
+                )
+
             if step % config.print_freq == 0:
 
                 stats = dict(
@@ -87,7 +86,7 @@ def train(config, model, loader):
         torch.save(state, config.checkpoint_dir / "checkpoint.pth")
 
     torch.save(
-        model.module.encoder.state_dict(), config.checkpoint_dir / "resnet50.pth"
+        model.module.encoder.state_dict(), config.checkpoint_dir / f"{config.model}.pth"
     )
 
 
@@ -116,10 +115,12 @@ def main(config: DictConfig) -> None:
     logger.info(OmegaConf.to_yaml(config, resolve=True))
     logger.info(f"Using the model: {config.model}")
 
-    # dataset = torchvision.datasets.ImageFolder(config.data.path / "train", Transform())
     cwd = get_original_cwd()
-    dataset = torchvision.datasets.CIFAR10(
-        f"{cwd}/cifar10/", train=True, download=True, transform=Transform()
+    # dataset = torchvision.datasets.CIFAR10(
+    #     f"{cwd}/cifar10/", train=True, download=True, transform=get_transforms(config)
+    # )
+    dataset = torchvision.datasets.ImageFolder(
+        config.data.path / "train", get_transforms(config)
     )
 
     loader = torch.utils.data.DataLoader(

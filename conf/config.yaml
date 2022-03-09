@@ -1,5 +1,5 @@
 
-# model
+## model ##
 model: "resnet50"
 pretrained: True
 proj_layers: 2
@@ -7,12 +7,17 @@ proj_dim: 8192
 lambda_: 0.0051
 
 
-# train
+## train ##
 seed: 0
 debug: False
 silent: False
 device: cpu
 workers: 4
+
+# leave null to use Barlow paper transforms
+transform_config_str: 'rand-m9-mstd0.5'
+
+optimizer: LARS
 
 max_epochs: 100
 log_interval: 100
@@ -39,11 +44,11 @@ wandb_entity: null
 wandb_project: null
 run_name: "${model}"
 
-# locations
+## locations ##
 checkpoint_dir: ./
 
 data:
-  path: "cifar10"
+  path: "data"
 
 eval:
   verbose: True

@@ -2,6 +2,34 @@ import torch
 import torch.optim as optim
 
 
+def get_optimizer(config, model):
+    param_biases = [p for p in model.parameters() if p.ndim == 1]
+    param_weights = [p for p in model.parameters() if p.ndim != 1]
+
+    parameters = [
+        {"params": param_weights, "lr": config.lr_weights},
+        {"params": param_biases, "lr": config.lr_biases},
+    ]
+    if config.optimizer.upper() == "LARS":
+        optimizer = LARS(
+            parameters,
+            lr=0,
+            weight_decay=config.weight_decay,
+            weight_decay_filter=True,
+            lars_adaptation_filter=True,
+        )
+    elif config.optimizer.upper() == "SGD":
+        optimizer = optim.SGD(
+            parameters,
+            lr=config.lr_weights,
+            momentum=config.momentum,
+            weight_decay=config.weight_decay,
+        )
+    else:
+        raise ValueError(f"Unknown optimizer {config.optimizer}")
+    return optimizer
+
+
 class LARS(optim.Optimizer):
     def __init__(
         self,

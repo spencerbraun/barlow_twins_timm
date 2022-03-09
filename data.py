@@ -3,6 +3,31 @@ import random
 import torchvision.transforms as transforms
 from PIL import Image, ImageOps, ImageFilter
 
+from timm.data.transforms_factory import create_transform
+
+
+def get_transforms(config):
+    if config.transform_config_str:
+        return TimmTransform()
+    else:
+        return Transform()
+
+
+class TimmTransform:
+    def __init__(self, config, train=True):
+        self.config = config
+        self.train = train
+        self.train_transform = create_transform(
+            224, is_training=True, auto_augment=config.transform_config_str
+        )
+        self.eval_transform = create_transform(224, is_training=False)
+        self.transform = self.train_transform if self.train else self.eval_transform
+
+    def __call__(self, x):
+        y1 = self.transform(x)
+        y2 = self.transform(x)
+        return y1, y2
+
 
 class GaussianBlur(object):
     def __init__(self, p):
